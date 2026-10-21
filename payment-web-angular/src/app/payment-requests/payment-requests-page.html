@@ -1,0 +1,152 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Solicitudes de pago</h1>
+    <p>Registre una solicitud y consulte las existentes. La comisión se calcula según el canal de origen.</p>
+  </header>
+
+  <section class="card" aria-labelledby="form-title">
+    <h2 id="form-title">Nueva solicitud</h2>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="externalReference">Referencia</label>
+          <input
+            id="externalReference"
+            type="text"
+            formControlName="externalReference"
+            placeholder="PAY-2026-0001"
+            autocomplete="off"
+            [class.invalid]="isInvalid('externalReference')"
+            [attr.aria-invalid]="isInvalid('externalReference')"
+          />
+          @if (hasError('externalReference', 'required') || hasError('externalReference', 'blank')) {
+            <p class="field-error">La referencia es obligatoria.</p>
+          }
+          @if (hasError('externalReference', 'trimmedMaxLength')) {
+            <p class="field-error">La referencia admite como máximo {{ referenceMaxLength }} caracteres.</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="amount">Monto</label>
+          <input
+            id="amount"
+            type="text"
+            inputmode="decimal"
+            formControlName="amount"
+            placeholder="1000.00"
+            autocomplete="off"
+            [class.invalid]="isInvalid('amount')"
+            [attr.aria-invalid]="isInvalid('amount')"
+          />
+          @if (hasError('amount', 'required')) {
+            <p class="field-error">El monto es obligatorio.</p>
+          }
+          @if (hasError('amount', 'amountFormat')) {
+            <p class="field-error">Ingrese un número con hasta dos decimales.</p>
+          }
+          @if (hasError('amount', 'positive')) {
+            <p class="field-error">El monto debe ser mayor que cero.</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="channel">Canal</label>
+          <select
+            id="channel"
+            formControlName="channel"
+            [class.invalid]="isInvalid('channel')"
+            [attr.aria-invalid]="isInvalid('channel')"
+          >
+            <option value="" disabled>Seleccione un canal</option>
+            @for (option of channels; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+          @if (hasError('channel', 'required')) {
+            <p class="field-error">Seleccione un canal.</p>
+          }
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="submitting()">
+          {{ submitting() ? 'Registrando…' : 'Registrar solicitud' }}
+        </button>
+      </div>
+    </form>
+
+    @if (submitError(); as error) {
+      <div class="alert alert-error" role="alert">
+        <p>{{ error.message }}</p>
+        @if (error.details.length > 0) {
+          <ul>
+            @for (detail of error.details; track $index) {
+              <li>{{ detail }}</li>
+            }
+          </ul>
+        }
+      </div>
+    }
+
+    @if (successMessage(); as message) {
+      <div class="alert alert-success" role="status">{{ message }}</div>
+    }
+  </section>
+
+  <section class="card" aria-labelledby="list-title">
+    <div class="list-header">
+      <h2 id="list-title">Solicitudes registradas</h2>
+      <div class="filter">
+        <label for="channelFilter">Filtrar por canal</label>
+        <select id="channelFilter" [formControl]="channelFilter">
+          <option value="">Todos</option>
+          @for (option of channels; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <p class="state" role="status">Cargando solicitudes…</p>
+    } @else if (loadError()) {
+      <div class="alert alert-error" role="alert">
+        <p>{{ loadError() }}</p>
+        <button type="button" class="btn btn-secondary" (click)="loadRequests()">Reintentar</button>
+      </div>
+    } @else if (requests().length === 0) {
+      <p class="state">
+        {{ channelFilter.value ? 'No hay solicitudes para el canal seleccionado.' : 'No hay solicitudes registradas.' }}
+      </p>
+    } @else {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Referencia</th>
+              <th scope="col" class="num">Monto</th>
+              <th scope="col">Canal</th>
+              <th scope="col" class="num">Comisión</th>
+              <th scope="col" class="num">Total</th>
+              <th scope="col">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (request of requests(); track request.id) {
+              <tr>
+                <td>{{ request.externalReference }}</td>
+                <td class="num">{{ request.amount | number: '1.2-2' }}</td>
+                <td>{{ channelLabel(request.channel) }}</td>
+                <td class="num">{{ request.fee | number: '1.2-2' }}</td>
+                <td class="num">{{ request.total | number: '1.2-2' }}</td>
+                <td><span class="badge">{{ statusLabel(request.status) }}</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</main>
